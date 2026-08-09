@@ -1,0 +1,14 @@
+# Normalize text files and store them with LF line endings
+* text=auto eol=lf
+
+# Preserve Windows command scripts with CRLF line endings
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Treat common non-text formats as binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
