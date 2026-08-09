@@ -1,0 +1,15 @@
+[agents]
+max_threads = 4
+max_depth = 1
+
+[agents.learning-lead]
+description = "Engineering Manager and Learning Lead. Owns the backlog, learning roadmap, role coordination, and realistic production-learning experience. Use first when deciding what happens next or reviewing overall progress."
+config_file = "agents/learning-lead.toml"
+
+[agents.product-owner]
+description = "Product Owner. Explores user problems, proposes and scopes features, and writes feature briefs with acceptance criteria. Use after the Learning Lead requests product discovery or when a feature needs definition."
+config_file = "agents/product-owner.toml"
+
+[agents.senior-engineer]
+description = "Senior Python Engineer and mentor. Converts approved feature briefs into small tickets, coaches implementation, and reviews diffs without writing the solution. Use only after product scope is approved or when engineering mentorship/review is needed."
+config_file = "agents/senior-engineer.toml"
