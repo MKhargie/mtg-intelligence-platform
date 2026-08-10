@@ -56,8 +56,9 @@ The primary success signal is that the player can identify a concrete next set o
   - protection;
   - likely weaknesses during a typical Commander game.
 - The review presents a detailed diagnosis in clear language.
-- The review provides three to five prioritized card additions or swaps, with each recommendation tied to the diagnosis.
-- For an incomplete brew, open slots and weak existing cards are considered together in one prioritized improvement plan.
+- The review provides three to five prioritized recommendations, with each recommendation tied to the diagnosis.
+- For a complete deck, every recommended addition is paired with a specific non-protected card to remove.
+- For an incomplete brew, open slots and weak existing cards are considered together in one prioritized improvement plan. A recommended addition may stand alone only when the brew has an open slot; otherwise, it is paired with a specific non-protected card to remove.
 - The review flags Commander legality problems that materially affect the advice, including color-identity violations, duplicate nonbasic cards, banned cards, and an ineligible commander.
 - An incomplete brew is not treated as illegal solely because it contains fewer than 100 cards.
 - The player can reject recommendations, protect additional cards, remove cards from the protected list, clarify or change the stated theme, update the deck list, and request another review.
@@ -77,15 +78,17 @@ The primary success signal is that the player can identify a concrete next set o
 
 1. Given a complete Commander deck, a stated theme or intended experience, and optional protected cards, the player receives a review covering theme alignment, game-plan support, mana, card draw, interaction, protection, and likely gameplay weaknesses.
 2. Given an incomplete Commander brew, the player receives a review that considers both open slots and weak existing cards without rejecting the brew solely because it has fewer than 100 cards.
-3. Every review provides three to five prioritized additions or swaps unless a legality problem or insufficient player context prevents responsible recommendations; when that occurs, the review clearly explains what must be resolved or clarified.
-4. Each recommended addition or swap explains which diagnosed weakness it addresses and how it supports the stated theme or intended experience.
-5. No recommendation removes a card currently identified by the player as protected.
-6. The review does not rank or alter recommendations based on card price, upgrade budget, competitive metagame, or an assumed power tier.
-7. When the deck contains a relevant Commander legality problem, the player is told what the problem is and why it affects the review.
-8. The player can reject a recommendation or revise the theme, protected-card list, or deck list and receive a new review reflecting that latest context.
-9. During refinement, previously rejected recommendations are not repeated unchanged unless the player changes relevant constraints or the review explains why the recommendation remains necessary.
-10. The review distinguishes diagnosed weaknesses from suggested changes so the player can understand the reasoning even if they decline every recommendation.
-11. At the end of a successful review, the player has a clearly ordered set of changes to consider and can judge whether those changes preserve the deck's identity.
+3. Every review provides three to five prioritized recommendations unless a legality problem or insufficient player context prevents responsible recommendations; when that occurs, the review clearly explains what must be resolved or clarified.
+4. For a complete deck, every recommended addition identifies a specific non-protected card to remove so the recommendation is an actionable one-for-one swap.
+5. For an incomplete brew, a recommended addition may be presented without a cut only while an open slot exists; once no open slots remain, every further addition identifies a specific non-protected card to remove.
+6. Each recommended addition or swap explains which diagnosed weakness it addresses and how it supports the stated theme or intended experience.
+7. No recommendation removes a card currently identified by the player as protected.
+8. The review does not rank or alter recommendations based on card price, upgrade budget, competitive metagame, or an assumed power tier.
+9. When the deck contains a relevant Commander legality problem, the player is told what the problem is and why it affects the review.
+10. The player can reject a recommendation or revise the theme, protected-card list, or deck list and receive a new review reflecting that latest context.
+11. During refinement, previously rejected recommendations are not repeated unchanged unless the player changes relevant constraints or the review explains why the recommendation remains necessary.
+12. The review distinguishes diagnosed weaknesses from suggested changes so the player can understand the reasoning even if they decline every recommendation.
+13. At the end of a successful review, the player has a clearly ordered set of changes to consider and can judge whether those changes preserve the deck's identity.
 
 ## Edge Cases and Product Rules
 
@@ -95,6 +98,8 @@ The primary success signal is that the player can identify a concrete next set o
 - A complete deck with more or fewer cards than Commander normally permits should receive a relevant legality flag; an explicitly incomplete brew should remain reviewable.
 - Basic lands and cards whose rules permit multiple copies are not treated as singleton violations.
 - Recommendations must respect the commander's color identity.
+- A complete deck never receives a standalone card addition; each addition must name a non-protected cut.
+- An incomplete brew may receive no more standalone additions than it has open slots. Recommendations beyond those slots must be paired with non-protected cuts.
 - If fewer than three responsible recommendations can be made, the review should provide the useful recommendations available and explain why it stopped short of three.
 - If the player rejects a recommendation without explanation, the next review should respect the rejection while allowing the player to give additional context.
 - If the player changes the theme substantially, the next review may differ materially from earlier advice and should make that relationship clear.
