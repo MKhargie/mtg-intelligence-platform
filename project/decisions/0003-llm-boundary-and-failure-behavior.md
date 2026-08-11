@@ -170,31 +170,59 @@ for each code:
   intent would produce materially different recommendations;
 - `conflicting_constraints`: the supplied intent conflicts with the commander
   configuration, submitted deck, or protected cards, including when satisfying the
-  intent would require changing a protected card.
+  intent would require changing a protected card;
+- `intent_not_queryable`: the clear stated intent cannot be represented by the
+  supported candidate-predicate grammar without changing its meaning;
+- `predicate_not_confirmed`: the player rejects or declines to confirm the proposed
+  plain-language predicate mapping.
 
 Missing intent is detected by deterministic application validation. The other
-three qualitative classifications may be produced by a preflight model, but the
+qualitative classifications may be produced by a preflight model, but the
 application accepts them only in the structured form above and validates that all
 codes are from the closed set and all required questions are present. A
 `clarification_required` result prevents recommendation generation, sets
 `recommendation_limit` to zero, and returns only those reasons and questions.
 
 For sufficient context, candidate discovery runs before full recommendation
-generation. It requests up to five distinct additions aligned with the validated
-intent. Each candidate must then resolve through Scryfall, pass deterministic
-Commander legality checks, and complete the same fact-grounding validation required
-for a final addition. Unknown, ambiguous, illegal, duplicate, or ungrounded
-candidates do not enter the responsible-addition pool. Each gameplay addition
-identity can enter the pool and contribute to the final count only once.
+generation. The context preflight proposes a predicate using this closed grammar:
+an AND-conjunction of zero or more `type_line_contains`, `oracle_text_contains`,
+`keyword_equals`, `mana_value_at_least`, `mana_value_at_most`,
+`color_identity_subset_of`, `gameplay_identity_in`, and
+`gameplay_identity_not_in` clauses. Text comparisons use Unicode-normalized,
+case-insensitive literal values; keyword and gameplay-identity comparisons are
+exact; numeric bounds are inclusive. Unsupported fields, operators, nesting, or
+free-form executable expressions are invalid.
+
+The application validates clause types and values, rejects contradictory numeric
+or identity clauses, and always adds the current commander color-identity and
+Commander-legality constraints. The player sees and explicitly confirms the
+plain-language meaning of the complete predicate before it can establish
+`sufficient` context. An over-restrictive mapping, an unsupported meaning, or a
+mapping the player does not confirm returns `clarification_required`; the model
+cannot silently narrow the query. Semantically equivalent confirmed intent maps to
+the same normalized clause ordering and values.
+
+The application sends that confirmed normalized predicate through Decision 0002's
+candidate corpus-query boundary and consumes every page from one snapshot. It then
+applies current-deck copy rules. This produces an independently enumerable eligible set and exact
+`eligible_candidate_count`. The discovery model ranks candidates from that set but
+must return exactly `min(5, eligible_candidate_count)` distinct gameplay
+identities. It cannot introduce an identity outside the set or return fewer as
+evidence of exhaustion.
+
+Each ranked candidate completes the same fact-grounding validation required for a
+final addition. An unknown, duplicate, out-of-set, or ungrounded result invalidates
+the attempt rather than shrinking the pool. Each gameplay addition identity can
+enter the responsible-addition pool and contribute to the final count only once.
 
 Candidate discovery, Scryfall resolution, grounding, gate calculation, and final
-plan composition form one complete generation attempt. If fewer than three
-candidates validate and the single automatic retry is still available, the retry
-restarts that complete sequence and replaces, rather than augments, the prior
-attempt's pool. The second attempt receives validation feedback but cannot reuse an
-unvalidated candidate from the first. After the bounded retry, the pool contains
-only the distinct validated candidates from the current attempt; final
-recommendations may select additions only from that pool.
+plan composition form one complete generation attempt. Any invalid discovery or
+grounding output may use the single automatic retry, which restarts that complete
+sequence and replaces, rather than augments, the prior attempt's pool. The second
+attempt receives validation feedback but cannot reuse an unvalidated candidate
+from the first. The pool contains only the exact requested number of distinct,
+validated candidates from the current attempt; final recommendations may select
+additions only from that pool.
 
 The application calculates change capacity from open slots and eligible
 unprotected cut quantities, then sets `recommendation_limit` to the least of five,
@@ -214,7 +242,7 @@ Sufficient context can still produce a deterministic limit of zero. The gate use
 `legality_blocks_recommendations` when unresolved legality findings prevent safe
 changes, or `no_available_changes` when there are neither open slots nor eligible
 unprotected cut quantities, or `no_responsible_additions` when no candidate remains
-after bounded discovery and validation. Recommendation generation is skipped. The
+in the application's exhaustively enumerated eligible set. Recommendation generation is skipped. The
 application returns a diagnosis-only result derived from the resolved deck and
 deterministic findings, with zero recommendations and the matching reason code.
 This is distinct from a clarification result because it asks no context question
@@ -287,12 +315,12 @@ then Scryfall resolution, grounding, gate calculation, and final composition. A
 second invalid attempt ends generation. Only the fully validated response may be
 shown to the player.
 
-Unknown, ambiguous, or illegal discovery candidates are excluded from the pool and
-can trigger the single retry when fewer than three candidates remain. An invalid
-addition that nevertheless reaches final composition makes the complete attempt
-contract-invalid. The application does not show a partial review, silently replace
-the card, or ask the player to approve an invalid addition. A second invalid
-attempt ends generation under the existing failure contract.
+An unknown, ambiguous, illegal, duplicate, out-of-set, or undersized discovery
+output makes the complete attempt contract-invalid and may use the single retry.
+An invalid addition that nevertheless reaches final composition has the same
+effect. The application does not show a partial review, silently replace the card,
+or ask the player to approve an invalid addition. A second invalid attempt ends
+generation under the existing failure contract.
 
 ## Card-name suggestion contract
 
@@ -374,10 +402,19 @@ do not expose prompts, secrets, stack traces, or raw provider responses.
 - Given a deterministic limit of one or two, a reduced response is accepted only
   when its count exactly equals that limit and its reason code matches.
 - Given change capacity of at least three but only one or two distinct candidates
-  remain after candidate discovery, one retry, Scryfall resolution, deterministic
-  legality checks, and fact-grounding validation, the gate sets the limit to that
-  pool size with `responsible_additions_limited`; the final response must use every
-  candidate in that validated pool.
+  exist after the application applies validated intent predicates and deterministic
+  legality checks to the complete current card corpus, the exact eligible count is
+  one or two; discovery must return that exact count, and the gate uses it with
+  `responsible_additions_limited`.
+- Given an exact eligible count of at least three, discovery output containing only
+  one or two candidates is contract-invalid and may use the single automatic retry;
+  it cannot produce a reduced review.
+- Given equivalent confirmed intent with clauses supplied in a different order,
+  normalization produces the same predicate; given an unsupported operator,
+  contradictory bounds, or an intent that cannot be faithfully represented,
+  context returns `intent_not_queryable`; given a predicate mapping the player
+  rejects or declines to confirm, it returns `predicate_not_confirmed`. Each result
+  includes a specific clarification question and no corpus query begins.
 - Given missing intent, intent broad enough to support materially different game
   plans, intent with two materially different reasonable interpretations, or intent
   that would require changing a protected card, preflight returns respectively
@@ -385,7 +422,8 @@ do not expose prompts, secrets, stack traces, or raw provider responses.
   `conflicting_constraints`, includes a specific question for every reason, sets
   the limit to zero, and no recommendation generation begins.
 - Given sufficient context but unresolved legality findings, no open slots and no
-  eligible unprotected cuts, or no validated candidate after bounded discovery,
+  eligible unprotected cuts, or an exhaustively enumerated eligible-candidate count
+  of zero,
   the gate returns a zero limit with respectively
   `legality_blocks_recommendations`, `no_available_changes`, or
   `no_responsible_additions`; recommendation generation is skipped and a
@@ -414,10 +452,9 @@ do not expose prompts, secrets, stack traces, or raw provider responses.
 - Given a deck containing multiple commander-eligible cards, the LLM receives the
   player's explicit legality-validated commander configuration rather than
   inferring commanders from the deck entries.
-- Given a discovery candidate that is unknown, ambiguous, off-color, banned, whose
-  normalized Commander status is not legal, or that is otherwise invalid, that
-  candidate is excluded; the attempt retries only when fewer than three candidates
-  remain and the single retry is available.
+- Given discovery output that is undersized, or contains a candidate that is
+  unknown, ambiguous, outside the enumerated eligible set, duplicate, or
+  ungrounded, the complete attempt is invalid and may use the single retry.
 - Given an invalid addition that nevertheless reaches final composition, the
   complete attempt is discarded and receives at most the existing single retry.
 - Given an unknown submitted name, the LLM may return candidate names, but none is
