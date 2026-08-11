@@ -29,10 +29,11 @@ The supported full line shape is:
 <quantity>x <card name> (<set code>) <collector number> [<category>]
 ```
 
-The set code, collector number, and category are optional metadata. When present,
-they must use the positions and delimiters shown above. The parser preserves the
-submitted card name and metadata; it does not infer a printing or a quantity
-greater than one.
+The category is independently optional. Set code and collector number are optional
+as a pair: either both are present or neither is. When metadata is present, it must
+use the positions and delimiters shown below. The parser preserves the submitted
+card name and metadata; it does not infer a printing or a quantity greater than
+one.
 
 An explicitly supplied quantity must be a positive whole number. The input parser
 may accept quantities greater than one. A later legality check determines whether
@@ -85,6 +86,10 @@ The following forms are accepted:
 ```text
 <card name>
 <quantity>x <card name>
+<card name> [<category>]
+<quantity>x <card name> [<category>]
+<card name> (<set code>) <collector number>
+<quantity>x <card name> (<set code>) <collector number>
 <card name> (<set code>) <collector number> [<category>]
 <quantity>x <card name> (<set code>) <collector number> [<category>]
 ```
@@ -128,7 +133,7 @@ A line fails parsing when:
 - it has no card name;
 - it supplies a quantity that is zero, negative, fractional, or not a whole number;
 - it includes only part of the printing metadata, such as a set code without a
-  collector number;
+  collector number or a collector number without a set code;
 - delimiters are unbalanced or metadata appears outside the supported order;
 - text outside the supported Archidekt-style entry makes the card name ambiguous.
 
@@ -146,6 +151,8 @@ Accepted:
 ```text
 Ark of Hunger
 1x Ark of Hunger
+Sol Ring [Artifact]
+Sol Ring (cmm) 396
 4x Mountain (trk) 323 [Land]
 1x Thorin, King of Durin's Folk (hoc) 3 [Commander{top}]
 1x Smaug, the Great Calamity // Spew Flame (hob) 109 [Creature]

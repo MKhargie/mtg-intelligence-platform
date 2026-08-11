@@ -75,7 +75,7 @@ The primary success signal is that the player can identify a concrete next set o
 
 ## Acceptance Criteria
 
-1. Given a complete Commander deck, a stated theme or intended experience, and optional protected cards, the player receives a review covering theme alignment, game-plan support, mana, card draw, interaction, protection, and likely gameplay weaknesses.
+1. Given a complete Commander deck, one or more explicitly designated commanders that form a legal Commander configuration, a stated theme or intended experience, and optional protected cards, the player receives a review covering theme alignment, game-plan support, mana, card draw, interaction, protection, and likely gameplay weaknesses.
 2. Given an explicit incomplete-brew designation, one or more explicitly designated commanders that form a legal Commander configuration, a stated theme or intended experience, and at least 10 distinct resolved noncommander card identities, the player receives a review that considers both open slots and weak existing cards without treating the brew as illegal solely because it has fewer than 100 cards.
 3. Every review provides three to five prioritized recommendations unless a legality problem or insufficient player context prevents responsible recommendations; when that occurs, the review clearly explains what must be resolved or clarified.
 4. For a complete deck, every recommended addition identifies a specific non-protected card to remove so the recommendation is an actionable one-for-one swap.
