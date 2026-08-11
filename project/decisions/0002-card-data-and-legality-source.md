@@ -43,8 +43,9 @@ identity, legality, or commander eligibility.
 
 - Scryfall provides structured card and legality data suitable for deterministic
   validation.
-- A live lookup avoids building a bulk-data refresh and indexing system in the
-  first slice.
+- Live batched lookup handles submitted references without requiring a local card
+  index. Candidate-capacity queries use a separate paginated corpus boundary so
+  callers do not confuse point resolution with enumeration.
 - Batching avoids unnecessary requests and reduces exposure to latency and rate
   limits.
 - An application-owned interface isolates the rest of the system from provider
@@ -57,10 +58,10 @@ identity, legality, or commander eligibility.
 
 ### Store and query Scryfall bulk data locally
 
-Deferred. Bulk data would reduce runtime dependence on Scryfall and is appropriate
-for large or repetitive lookup workloads. It also requires download scheduling,
-freshness policy, storage, indexing, and atomic refresh behavior that the first
-slice does not yet need.
+Deferred as the first implementation of point resolution. Bulk data remains an
+allowed future implementation of the corpus-query boundary below, but would
+require download scheduling, freshness policy, storage, indexing, and atomic
+refresh behavior.
 
 ### Perform one live request per card
 
@@ -125,6 +126,34 @@ does not make two printings of the same Oracle card distinct for those behaviors
 The exact normalized application types will be defined during implementation,
 but they must satisfy this behavioral contract without exposing raw provider
 objects to review logic.
+
+## Candidate corpus-query contract
+
+The application-owned card-data interface also supports exhaustive candidate
+queries separately from parsed-reference resolution. A request contains the
+legality-validated commander configuration, the closed normalized-fact predicate
+defined by the LLM-boundary decision, and an optional opaque continuation token.
+The caller does not construct provider URLs or depend on provider pagination.
+
+The first response establishes an opaque `query_snapshot_id`, the exact total
+number of distinct gameplay identities matching the predicate and deterministic
+Commander legality constraints, and the first page of normalized card results.
+Every page returns that same snapshot identifier, normalized facts in the response
+contract above, and either a continuation token or an explicit end marker. A
+gameplay identity appears at most once across the query.
+
+The boundary guarantees that the total and every page describe one complete,
+internally consistent provider data version. It may satisfy that guarantee through
+provider-supported snapshot semantics or an atomic application cache. If it cannot
+establish a complete snapshot, a continuation token is invalid or expired, any
+page is missing, or provider data changes during an unsnapshotted traversal, the
+query fails closed and returns no authoritative count or partial candidate pool.
+Callers must consume all pages and verify that the distinct identity count equals
+the declared total before treating the set as exhaustive.
+
+The snapshot reports the provider data version or retrieval timestamp used for
+traceability. Freshness does not change mid-query. A later review starts a new
+query rather than mixing pages or counts from different snapshots.
 
 ## Legality-evaluation contract
 
@@ -223,6 +252,13 @@ an incomplete deck model to reach legality or recommendation logic.
   not; given an incomplete brew above that total, size produces a finding.
 - Given missing rules data required by any check, evaluation fails without
   declaring the deck legal or starting an LLM review.
+- Given a paginated candidate query, every page carries one snapshot identifier,
+  no gameplay identity repeats, and the consumed distinct count must equal the
+  declared exact total before the result is treated as exhaustive.
+- Given a missing page, expired continuation token, inconsistent snapshot
+  identifier, changed unsnapshotted provider data, or final count mismatch, the
+  corpus query fails closed without returning an authoritative count or partial
+  pool.
 
 ## Operational reference
 
