@@ -101,8 +101,12 @@ containing at least:
 - source line number and submitted values for traceability;
 - a stable card identifier;
 - canonical card name;
-- card faces when applicable;
-- color identity;
+- card layout and card faces when applicable;
+- type line;
+- Oracle rules text;
+- mana cost and mana value;
+- colors and color identity;
+- keywords and mana-production facts;
 - Commander legality status;
 - information needed to determine commander eligibility;
 - information needed to identify basic lands or card-specific copy-count
@@ -178,6 +182,9 @@ an incomplete deck model to reach legality or recommendation logic.
   and returns one correlated normalized result per reference.
 - Given an accented or double-faced card name, the normalized result preserves and
   resolves the intended identity.
+- Given a successfully resolved card, the normalized result contains the gameplay
+  facts needed for theme, game-plan, mana, draw, interaction, and protection
+  analysis without requiring the LLM to invent card text.
 - Given an unknown name among otherwise valid entries, the response identifies its
   source line and no review begins.
 - Given mismatched set and collector metadata, the response reports an invalid
