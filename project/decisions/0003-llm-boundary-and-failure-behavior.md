@@ -184,17 +184,20 @@ codes are from the closed set and all required questions are present. A
 `recommendation_limit` to zero, and returns only those reasons and questions.
 
 For sufficient context, candidate discovery runs before full recommendation
-generation. The context preflight proposes a predicate using this closed grammar:
-an AND-conjunction of zero or more `type_line_contains`, `oracle_text_contains`,
-`keyword_equals`, `mana_value_at_least`, `mana_value_at_most`,
-`color_identity_subset_of`, `gameplay_identity_in`, and
-`gameplay_identity_not_in` clauses. Text comparisons use Unicode-normalized,
-case-insensitive literal values; keyword and gameplay-identity comparisons are
-exact; numeric bounds are inclusive. Unsupported fields, operators, nesting, or
-free-form executable expressions are invalid.
+generation. The context preflight proposes a predicate in disjunctive normal form:
+one or more OR-alternative groups, each containing one or more AND clauses. A card
+matches when it satisfies every clause in at least one group. The closed clause set
+is `type_line_contains`, `oracle_text_contains`, `keyword_equals`,
+`mana_value_at_least`, `mana_value_at_most`, `color_identity_subset_of`,
+`gameplay_identity_in`, and `gameplay_identity_not_in`. Text comparisons use
+Unicode-normalized, case-insensitive literal values; keyword and gameplay-identity
+comparisons are exact; numeric bounds are inclusive. Empty groups, unsupported
+fields or operators, deeper nesting, and free-form executable expressions are
+invalid.
 
 The application validates clause types and values, rejects contradictory numeric
-or identity clauses, and always adds the current commander color-identity and
+or identity clauses within a group, removes duplicate clauses and groups, sorts
+clauses and groups canonically, and always adds the current commander color-identity and
 Commander-legality constraints. The player sees and explicitly confirms the
 plain-language meaning of the complete predicate before it can establish
 `sufficient` context. An over-restrictive mapping, an unsupported meaning, or a
@@ -202,9 +205,18 @@ mapping the player does not confirm returns `clarification_required`; the model
 cannot silently narrow the query. Semantically equivalent confirmed intent maps to
 the same normalized clause ordering and values.
 
-The application sends that confirmed normalized predicate through Decision 0002's
+Before any corpus query or discovery-model call, the application evaluates
+blocking legality findings and calculates change capacity from open slots and
+eligible unprotected cut quantities. A blocking legality result immediately
+returns the zero-limit `legality_blocks_recommendations` diagnosis. Zero change
+capacity immediately returns the zero-limit `no_available_changes` diagnosis.
+Neither outcome starts corpus enumeration, candidate ranking, grounding, or a
+generation retry.
+
+For positive change capacity, the application sends the confirmed normalized predicate through Decision 0002's
 candidate corpus-query boundary and consumes every page from one snapshot. It then
-applies current-deck copy rules. This produces an independently enumerable eligible set and exact
+applies current-deck copy rules. This produces an independently enumerable eligible
+set and exact
 `eligible_candidate_count`. The discovery model ranks candidates from that set but
 must return exactly `min(5, eligible_candidate_count)` distinct gameplay
 identities. It cannot introduce an identity outside the set or return fewer as
@@ -215,7 +227,7 @@ final addition. An unknown, duplicate, out-of-set, or ungrounded result invalida
 the attempt rather than shrinking the pool. Each gameplay addition identity can
 enter the responsible-addition pool and contribute to the final count only once.
 
-Candidate discovery, Scryfall resolution, grounding, gate calculation, and final
+Corpus enumeration, candidate discovery, Scryfall resolution, grounding, gate calculation, and final
 plan composition form one complete generation attempt. Any invalid discovery or
 grounding output may use the single automatic retry, which restarts that complete
 sequence and replaces, rather than augments, the prior attempt's pool. The second
@@ -224,9 +236,8 @@ from the first. The pool contains only the exact requested number of distinct,
 validated candidates from the current attempt; final recommendations may select
 additions only from that pool.
 
-The application calculates change capacity from open slots and eligible
-unprotected cut quantities, then sets `recommendation_limit` to the least of five,
-change capacity, and responsible-addition pool size. Thus a model cannot justify a
+The application sets `recommendation_limit` to the least of five, the previously
+calculated positive change capacity, and responsible-addition pool size. Thus a model cannot justify a
 reduced count in prose: every counted addition has a resolved identity, legal
 status, validated theme-alignment basis, and an available slot or cut path.
 
@@ -240,9 +251,9 @@ that limit. An LLM-authored explanation alone cannot reduce the count.
 
 Sufficient context can still produce a deterministic limit of zero. The gate uses
 `legality_blocks_recommendations` when unresolved legality findings prevent safe
-changes, or `no_available_changes` when there are neither open slots nor eligible
-unprotected cut quantities, or `no_responsible_additions` when no candidate remains
-in the application's exhaustively enumerated eligible set. Recommendation generation is skipped. The
+changes, `no_available_changes` when there are neither open slots nor eligible
+unprotected cut quantities, or `no_responsible_additions` when a positive-capacity
+review has no candidate in the exhaustively enumerated eligible set. Recommendation generation is skipped. The
 application returns a diagnosis-only result derived from the resolved deck and
 deterministic findings, with zero recommendations and the matching reason code.
 This is distinct from a clarification result because it asks no context question
@@ -415,6 +426,9 @@ do not expose prompts, secrets, stack traces, or raw provider responses.
   context returns `intent_not_queryable`; given a predicate mapping the player
   rejects or declines to confirm, it returns `predicate_not_confirmed`. Each result
   includes a specific clarification question and no corpus query begins.
+- Given a confirmed lifegain intent represented by alternative groups for the
+  `lifelink` keyword and supported Oracle-text phrases, a card may match any one
+  group; it is not required to satisfy every alternative.
 - Given missing intent, intent broad enough to support materially different game
   plans, intent with two materially different reasonable interpretations, or intent
   that would require changing a protected card, preflight returns respectively
@@ -428,6 +442,9 @@ do not expose prompts, secrets, stack traces, or raw provider responses.
   `legality_blocks_recommendations`, `no_available_changes`, or
   `no_responsible_additions`; recommendation generation is skipped and a
   diagnosis-only result is returned.
+- Given a blocking legality finding or zero change capacity known before discovery,
+  the application returns the corresponding diagnosis without a corpus query,
+  candidate-model call, grounding pass, or consumed retry.
 - Given distinct recommendation pairs that reuse a cut beyond its available
   quantity, exhaust open slots, or create an illegal cumulative copy count, ordered
   simulation rejects the complete response.
