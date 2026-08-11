@@ -22,9 +22,9 @@ protects most or all of a complete deck.
 There is no product-specific maximum number of protected cards. A player may
 protect any number of cards in the submitted deck, including every card.
 
-The commander is inherently protected and does not need to be added to the
-player-managed protected-card collection. No recommendation may remove the
-commander or another currently protected card.
+Every designated commander is inherently protected and does not need to be added
+to the player-managed protected-card collection. No recommendation may remove a
+designated commander or another currently protected card.
 
 Protected selections are normalized by resolved card identity. Repeating the same
 selection does not create multiple protected entries. Each selected identity must
@@ -85,8 +85,8 @@ current deck. Each reference follows the same identity-resolution boundary used 
 the deck list.
 
 After resolution, the application creates a set of unique protected card
-identities. The effective protected set is that player-managed set plus the
-commander's identity.
+identities. The effective protected set is that player-managed set plus every
+designated commander's identity.
 
 An update replaces or deliberately modifies the current protected set according
 to the refinement request. The next review uses the latest successfully validated
@@ -101,8 +101,8 @@ set; a failed update does not partially change it.
   verification.
 - **Duplicate selection:** normalize it to the existing protected identity rather
   than reporting an additional protected card.
-- **Commander omitted:** keep the commander inherently protected; omission from the
-  player-managed collection is not an error.
+- **Commander omitted:** keep every designated commander inherently protected;
+  omission from the player-managed collection is not an error.
 - **Deck update removes a protected card:** require the refinement request to
   reconcile that protected selection explicitly or return a clear validation
   result. Do not retain a hidden protected identity outside the current deck.
@@ -116,9 +116,10 @@ set; a failed update does not partially change it.
 
 ## Verification examples
 
-- Given zero player-selected cards, only the commander is inherently protected.
+- Given zero player-selected cards, only the designated commanders are inherently
+  protected.
 - Given one card selected repeatedly, the effective protected set contains one
-  player-selected identity plus the commander.
+  player-selected identity plus every designated commander.
 - Given more than 10 unique valid selections, all are accepted; no product count
   limit is applied.
 - Given every card protected in a complete deck, the review may diagnose weaknesses

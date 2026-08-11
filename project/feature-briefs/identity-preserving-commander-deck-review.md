@@ -12,7 +12,7 @@ Casual Commander players often want to strengthen a deck they already enjoy with
 
 - The first target user is a casual Commander player improving a deck they already enjoy.
 - Preserving theme and deck identity is more important than optimizing for a power tier.
-- The player can state the deck's theme or intended experience and identify any number of cards in the submitted deck that must not be removed; the commander is inherently protected.
+- The player can state the deck's theme or intended experience and identify any number of cards in the submitted deck that must not be removed; every designated commander is inherently protected.
 - The review covers both complete decks and incomplete brews.
 - The player receives a detailed diagnosis and a prioritized set of card additions or swaps.
 - The player can refine the review repeatedly as their preferences and deck list evolve.
@@ -45,7 +45,7 @@ The primary success signal is that the player can identify a concrete next set o
 
 - The player can provide either a complete Commander deck or an incomplete Commander brew.
 - The player can describe the deck's theme, intended experience, or both.
-- The player can identify any number of cards in the submitted deck as protected, and recommendations must not remove them or the commander.
+- The player can identify any number of cards in the submitted deck as protected, and recommendations must not remove them or any designated commander.
 - The review evaluates:
   - alignment with the stated theme and intended experience;
   - clarity and support for the deck's game plan;
@@ -76,7 +76,7 @@ The primary success signal is that the player can identify a concrete next set o
 ## Acceptance Criteria
 
 1. Given a complete Commander deck, a stated theme or intended experience, and optional protected cards, the player receives a review covering theme alignment, game-plan support, mana, card draw, interaction, protection, and likely gameplay weaknesses.
-2. Given an explicit incomplete-brew designation, one eligible commander, a stated theme or intended experience, and at least 10 distinct resolved noncommander card identities, the player receives a review that considers both open slots and weak existing cards without treating the brew as illegal solely because it has fewer than 100 cards.
+2. Given an explicit incomplete-brew designation, one or more explicitly designated commanders that form a legal Commander configuration, a stated theme or intended experience, and at least 10 distinct resolved noncommander card identities, the player receives a review that considers both open slots and weak existing cards without treating the brew as illegal solely because it has fewer than 100 cards.
 3. Every review provides three to five prioritized recommendations unless a legality problem or insufficient player context prevents responsible recommendations; when that occurs, the review clearly explains what must be resolved or clarified.
 4. For a complete deck, every recommended addition identifies a specific non-protected card to remove so the recommendation is an actionable one-for-one swap.
 5. For an incomplete brew, a recommended addition may be presented without a cut only while an open slot exists; once no open slots remain, every further addition identifies a specific non-protected card to remove.
@@ -97,14 +97,14 @@ The primary success signal is that the player can identify a concrete next set o
 - If the theme is too broad or ambiguous to guide recommendations, the review should request clarification before presenting a definitive improvement plan.
 - A complete deck with more or fewer cards than Commander normally permits should receive a relevant legality flag; an explicitly incomplete brew should remain reviewable.
 - Basic lands and cards whose rules permit multiple copies are not treated as singleton violations.
-- Recommendations must respect the commander's color identity.
+- Recommendations must respect the designated commanders' combined color identity.
 - A complete deck never receives a standalone card addition; each addition must name a non-protected cut.
 - An incomplete brew may receive no more standalone additions than it has open slots. Recommendations beyond those slots must be paired with non-protected cuts.
 - If fewer than three responsible recommendations can be made, the review should provide the useful recommendations available and explain why it stopped short of three.
 - If the player rejects a recommendation without explanation, the next review should respect the rejection while allowing the player to give additional context.
 - If the player changes the theme substantially, the next review may differ materially from earlier advice and should make that relationship clear.
 - Advice should be framed as choices for the player, not as a claim that there is one objectively correct version of a casual Commander deck.
-- An incomplete brew is reviewable only when it is explicitly identified as incomplete and includes one eligible commander, stated intent, and at least 10 distinct resolved noncommander card identities; repeated quantities do not increase that identity count.
+- An incomplete brew is reviewable only when it is explicitly identified as incomplete and includes one or more explicitly designated commanders that form a legal Commander configuration, stated intent, and at least 10 distinct resolved noncommander card identities; repeated quantities do not increase that identity count.
 
 ## Open Questions
 
