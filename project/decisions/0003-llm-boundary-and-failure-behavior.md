@@ -141,6 +141,12 @@ and references to resolved submitted cards where the response discusses the
 existing deck. Proposed additions follow the verification contract below. A
 response that fails validation is not a completed review.
 
+Before enforcing the recommendation-count target, the application normalizes every
+recommendation in the current response to its gameplay addition identity and,
+when present, gameplay cut identity. Two recommendations with the same normalized
+addition/cut pair are duplicates. Any duplicate pair invalidates the response; it
+does not count again toward the three-to-five target.
+
 During refinement, the application also normalizes each recommendation to its
 resolved addition identity and, when present, resolved cut identity. It compares
 those identities with previously rejected recommendations retained in the active
@@ -235,6 +241,9 @@ original entry directly.
   reject a recommendation with the same normalized addition/cut identities as a
   previous rejection unless its `necessity_justification` explains why it remains
   necessary.
+- **Duplicate current recommendation:** reject a response containing the same
+  normalized gameplay addition/cut pair more than once, before evaluating the
+  recommendation count.
 - **Suggestion generation failure:** retain the original unresolved entry and let
   the player correct it manually. Do not block manual recovery.
 - **Scryfall failure after player approval:** keep the suggestion unverified and do
@@ -249,6 +258,9 @@ do not expose prompts, secrets, stack traces, or raw provider responses.
   context and a contract-valid response is presented as a review.
 - Given a response that cuts a protected card, deterministic validation rejects it
   and permits at most one automatic retry.
+- Given the same normalized addition/cut pair repeated in one response, validation
+  rejects the response and the repeated pair does not satisfy the recommendation
+  count.
 - Given unchanged deck and player constraints, a previously rejected addition/cut
   pair repeated without a necessity explanation is rejected; changed wording alone
   does not make it new.
