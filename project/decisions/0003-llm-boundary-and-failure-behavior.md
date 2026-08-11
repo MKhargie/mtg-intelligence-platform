@@ -121,8 +121,9 @@ A successful response contains separate structured sections for:
 - theme and game-plan alignment;
 - mana, draw, interaction, and protection findings;
 - relevant gameplay risks;
-- an ordered set of three to five recommendations, unless the application's
-  deterministic recommendation gate permits fewer;
+- an ordered set whose count is within the application's deterministic
+  recommendation gate: three through the limit when it is at least three, exactly
+  the limit when it is one or two, or none for a defined zero-limit outcome;
 - when fewer than three are permitted, a `reduced_count_reason_code` matching the
   deterministic gate supplied by the application;
 - the diagnosed weakness addressed by each recommendation;
@@ -152,7 +153,8 @@ does not count again toward the three-to-five target.
 The application determines whether fewer than three recommendations are permitted
 before generation. It derives a `recommendation_limit` and reason code from
 the context-readiness result, deterministic legality findings, available open
-slots, and the quantities of eligible unprotected cut candidates.
+slots, the quantities of eligible unprotected cut candidates, and the validated
+responsible-addition pool described below.
 
 Before recommendation generation, a context-readiness preflight evaluates only the
 player's stated theme or intended experience, the designated commanders, the
@@ -177,20 +179,46 @@ codes are from the closed set and all required questions are present. A
 `clarification_required` result prevents recommendation generation, sets
 `recommendation_limit` to zero, and returns only those reasons and questions.
 
+For sufficient context, candidate discovery runs before full recommendation
+generation. It requests up to five distinct additions aligned with the validated
+intent. Each candidate must then resolve through Scryfall, pass deterministic
+Commander legality checks, and complete the same fact-grounding validation required
+for a final addition. Unknown, ambiguous, illegal, duplicate, or ungrounded
+candidates do not enter the responsible-addition pool. Each gameplay addition
+identity can enter the pool and contribute to the final count only once.
+
+Candidate discovery, Scryfall resolution, grounding, gate calculation, and final
+plan composition form one complete generation attempt. If fewer than three
+candidates validate and the single automatic retry is still available, the retry
+restarts that complete sequence and replaces, rather than augments, the prior
+attempt's pool. The second attempt receives validation feedback but cannot reuse an
+unvalidated candidate from the first. After the bounded retry, the pool contains
+only the distinct validated candidates from the current attempt; final
+recommendations may select additions only from that pool.
+
+The application calculates change capacity from open slots and eligible
+unprotected cut quantities, then sets `recommendation_limit` to the least of five,
+change capacity, and responsible-addition pool size. Thus a model cannot justify a
+reduced count in prose: every counted addition has a resolved identity, legal
+status, validated theme-alignment basis, and an available slot or cut path.
+
 When context is sufficient and the limit is at least three, the response must
-contain three to five recommendations. When the deterministic limit is one or two,
+contain between three and `recommendation_limit` recommendations. When the
+deterministic limit is one or two,
 the response must contain exactly that many and its `reduced_count_reason_code`
-must exactly match the supplied gate. An LLM-authored explanation alone cannot
-reduce the count.
+must exactly match the supplied gate. The gate uses
+`responsible_additions_limited` when pool size, rather than change capacity, fixes
+that limit. An LLM-authored explanation alone cannot reduce the count.
 
 Sufficient context can still produce a deterministic limit of zero. The gate uses
 `legality_blocks_recommendations` when unresolved legality findings prevent safe
 changes, or `no_available_changes` when there are neither open slots nor eligible
-unprotected cut quantities. Recommendation generation is skipped. The application
-returns a diagnosis-only result derived from the resolved deck and deterministic
-findings, with zero recommendations and the matching reason code. This is distinct
-from a clarification result because it asks no context question and does not imply
-that more player intent alone would permit a change.
+unprotected cut quantities, or `no_responsible_additions` when no candidate remains
+after bounded discovery and validation. Recommendation generation is skipped. The
+application returns a diagnosis-only result derived from the resolved deck and
+deterministic findings, with zero recommendations and the matching reason code.
+This is distinct from a clarification result because it asks no context question
+and does not imply that more player intent alone would permit a change.
 
 The application then validates the ordered recommendations as one cumulative
 change set. Starting from the resolved submitted deck, each recommendation is
@@ -218,7 +246,8 @@ recorded for comparison but does not by itself count as a changed constraint.
 
 ## Proposed-addition verification contract
 
-The LLM may propose card names that are not in the submitted deck. Those names are
+Candidate discovery is the proposal phase of the complete generation attempt. The
+LLM may propose card names that are not in the submitted deck. Those names are
 unverified suggestions when generated and are not shown as a completed review or
 added to deck state immediately.
 
@@ -226,15 +255,19 @@ Before presentation, the application sends every proposed addition through the
 card-data boundary. Each must resolve through Scryfall and pass deterministic
 checks for the current commander configuration, including color identity, banned
 status, normalized Commander legality status, and applicable copy-count rules. The
-application then validates the paired cut, protected-card constraints, open-slot
-rules, and the remaining response.
+discovery phase does not select or validate cuts. During final composition and
+cumulative simulation, the application validates each selected cut, protected-card
+constraints, open-slot rules, and the remaining response.
 
-After proposed additions resolve, the application performs a grounding pass that
+After candidate additions resolve, the application performs a grounding pass that
 supplies their normalized gameplay facts, including Oracle text and face data, to
-the LLM. The final recommendation explanations are generated or revised from those
-facts. For each addition, the grounding response cites the supporting normalized
-fact keys and values in `fact_basis`. Deterministic validation requires every cited
-fact to match the resolved card identity and normalized value.
+the LLM. That pass validates each candidate's theme-alignment basis and retains its
+resolved identity and normalized facts in the responsible-addition pool. Final plan
+composition reuses those retained artifacts; it does not resolve or ground the
+same candidate a second time. The final recommendation explanations are generated
+from those facts. For each addition, the final response cites the supporting
+normalized fact keys and values in `fact_basis`. Deterministic validation requires
+every cited fact to match the retained resolved identity and normalized value.
 
 Player-facing card-mechanics claims are rendered from the validated `fact_basis`;
 free-form LLM prose is not treated as an additional source of card facts. Missing,
@@ -245,18 +278,21 @@ the submitted deck. Their `fact_basis` references the normalized gameplay identi
 and exact fact keys and values supplied in the original review request. Proposed
 additions reference the normalized facts returned after their resolution.
 
-The grounding pass may not change addition or cut identities. An identity change
-invalidates the attempt, consumes the single automatic retry, and does not trigger
-resolution within that attempt. If the retry is available, the complete sequence
-restarts with proposal generation, then Scryfall resolution, then a new grounding
-pass. A second invalid attempt ends generation. Only the grounded, fully validated
-response may be shown to the player.
+Neither candidate grounding nor final plan composition may change an addition
+identity; final composition also may not change a selected cut identity during its
+validation. An identity change invalidates the attempt, consumes the single
+automatic retry, and does not trigger resolution within that attempt. If the retry
+is available, the complete sequence restarts with a replacement candidate pool,
+then Scryfall resolution, grounding, gate calculation, and final composition. A
+second invalid attempt ends generation. Only the fully validated response may be
+shown to the player.
 
-If any addition is unknown, ambiguous, or illegal for the deck, the entire review
-response is contract-invalid. The application may use its single automatic retry
-with precise validation feedback. It does not show a partial review, silently
-replace the card, or ask the player to approve an invalid addition. A second
-invalid response ends generation under the existing failure contract.
+Unknown, ambiguous, or illegal discovery candidates are excluded from the pool and
+can trigger the single retry when fewer than three candidates remain. An invalid
+addition that nevertheless reaches final composition makes the complete attempt
+contract-invalid. The application does not show a partial review, silently replace
+the card, or ask the player to approve an invalid addition. A second invalid
+attempt ends generation under the existing failure contract.
 
 ## Card-name suggestion contract
 
@@ -308,8 +344,8 @@ original entry directly.
   the player supplies context that validates as sufficient.
 - **No responsible changes available:** for sufficient context and a deterministic
   limit of zero, skip recommendation generation and return a diagnosis-only result
-  with `legality_blocks_recommendations` or `no_available_changes`, as determined
-  by the gate.
+  with `legality_blocks_recommendations`, `no_available_changes`, or
+  `no_responsible_additions`, as determined by the gate.
 - **Invalid cumulative plan:** reject an ordered set that reuses an exhausted cut,
   consumes more open slots than exist, or becomes illegal when its changes are
   applied sequentially to the simulated deck.
@@ -332,18 +368,28 @@ do not expose prompts, secrets, stack traces, or raw provider responses.
   count.
 - Given a deterministic recommendation limit of at least three, a one-item response
   is rejected regardless of the LLM's explanation.
+- Given a deterministic limit of three or four, a response containing more than
+  that limit is rejected, and one pooled gameplay addition identity cannot satisfy
+  the count more than once through different cuts.
 - Given a deterministic limit of one or two, a reduced response is accepted only
   when its count exactly equals that limit and its reason code matches.
+- Given change capacity of at least three but only one or two distinct candidates
+  remain after candidate discovery, one retry, Scryfall resolution, deterministic
+  legality checks, and fact-grounding validation, the gate sets the limit to that
+  pool size with `responsible_additions_limited`; the final response must use every
+  candidate in that validated pool.
 - Given missing intent, intent broad enough to support materially different game
   plans, intent with two materially different reasonable interpretations, or intent
   that would require changing a protected card, preflight returns respectively
   `missing_intent`, `broad_intent`, `ambiguous_intent`, or
   `conflicting_constraints`, includes a specific question for every reason, sets
   the limit to zero, and no recommendation generation begins.
-- Given sufficient context but unresolved legality findings, or no open slots and
-  no eligible unprotected cuts, the gate returns a zero limit with respectively
-  `legality_blocks_recommendations` or `no_available_changes`; recommendation
-  generation is skipped and a diagnosis-only result is returned.
+- Given sufficient context but unresolved legality findings, no open slots and no
+  eligible unprotected cuts, or no validated candidate after bounded discovery,
+  the gate returns a zero limit with respectively
+  `legality_blocks_recommendations`, `no_available_changes`, or
+  `no_responsible_additions`; recommendation generation is skipped and a
+  diagnosis-only result is returned.
 - Given distinct recommendation pairs that reuse a cut beyond its available
   quantity, exhaust open slots, or create an illegal cumulative copy count, ordered
   simulation rejects the complete response.
@@ -368,10 +414,12 @@ do not expose prompts, secrets, stack traces, or raw provider responses.
 - Given a deck containing multiple commander-eligible cards, the LLM receives the
   player's explicit legality-validated commander configuration rather than
   inferring commanders from the deck entries.
-- Given any proposed addition that is unknown, ambiguous, off-color, banned, or
-  whose normalized Commander status is not legal, or that is otherwise invalid,
-  the entire response is discarded and receives at most the existing single
-  automatic retry.
+- Given a discovery candidate that is unknown, ambiguous, off-color, banned, whose
+  normalized Commander status is not legal, or that is otherwise invalid, that
+  candidate is excluded; the attempt retries only when fewer than three candidates
+  remain and the single retry is available.
+- Given an invalid addition that nevertheless reaches final composition, the
+  complete attempt is discarded and receives at most the existing single retry.
 - Given an unknown submitted name, the LLM may return candidate names, but none is
   added to the deck before explicit player selection and successful Scryfall
   resolution.
