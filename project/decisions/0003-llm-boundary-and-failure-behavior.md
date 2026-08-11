@@ -188,8 +188,10 @@ generation. The context preflight proposes a predicate in disjunctive normal for
 one or more OR-alternative groups, each containing one or more AND clauses. A card
 matches when it satisfies every clause in at least one group. The closed clause set
 is `type_line_contains`, `oracle_text_contains`, `keyword_equals`,
+`type_line_not_contains`, `oracle_text_not_contains`, `keyword_not_equals`,
 `mana_value_at_least`, `mana_value_at_most`, `color_identity_subset_of`,
-`gameplay_identity_in`, and `gameplay_identity_not_in`. Text comparisons use
+`gameplay_identity_in`, and `gameplay_identity_not_in`. Positive and negative text
+comparisons use
 Unicode-normalized, case-insensitive literal values; keyword and gameplay-identity
 comparisons are exact; numeric bounds are inclusive. Empty groups, unsupported
 fields or operators, deeper nesting, and free-form executable expressions are
@@ -429,6 +431,10 @@ do not expose prompts, secrets, stack traces, or raw provider responses.
 - Given a confirmed lifegain intent represented by alternative groups for the
   `lifelink` keyword and supported Oracle-text phrases, a card may match any one
   group; it is not required to satisfy every alternative.
+- Given confirmed intent for artifact creatures excluding Vehicles, each
+  alternative group includes the required positive type clauses and
+  `type_line_not_contains: Vehicle`; the corpus result cannot include a Vehicle
+  merely because it satisfies the positive artifact-creature clauses.
 - Given missing intent, intent broad enough to support materially different game
   plans, intent with two materially different reasonable interpretations, or intent
   that would require changing a protected card, preflight returns respectively
