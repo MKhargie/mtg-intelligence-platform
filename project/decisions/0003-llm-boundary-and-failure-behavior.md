@@ -123,6 +123,9 @@ A successful response contains separate structured sections for:
   fewer responsible recommendations are possible;
 - the diagnosed weakness addressed by each recommendation;
 - an explanation of how each recommendation respects the stated theme;
+- an optional `necessity_justification` field that is otherwise empty and is
+  required when repeating a previously rejected recommendation under unchanged
+  relevant constraints;
 - an addition and a specific non-protected cut for each complete-deck change;
 - for an incomplete brew, whether an addition uses an open slot or includes a
   specific non-protected cut.
@@ -132,6 +135,20 @@ the response shape, protected-card constraint, recommendation count, required cu
 and references to resolved submitted cards where the response discusses the
 existing deck. Proposed additions follow the verification contract below. A
 response that fails validation is not a completed review.
+
+During refinement, the application also normalizes each recommendation to its
+resolved addition identity and, when present, resolved cut identity. It compares
+those identities with previously rejected recommendations retained in the active
+session. With unchanged relevant deck and player constraints, an unchanged repeat
+is rejected unless its `necessity_justification` explicitly explains why the
+recommendation remains necessary. A change in ordinary recommendation prose alone
+does not create a new recommendation or satisfy that field.
+
+For this comparison, relevant constraints are the normalized deck identities and
+quantities, commander configuration, complete/incomplete designation, stated theme
+or intended experience, protected-card identities, and explicit player feedback
+that changes a review constraint. A bare rejection without explanatory feedback is
+recorded for comparison but does not by itself count as a changed constraint.
 
 ## Proposed-addition verification contract
 
@@ -179,6 +196,10 @@ original entry directly.
   addition must resolve and pass deterministic legality checks before presentation;
   the LLM cannot introduce an unverified card into the deck or authoritative
   findings.
+- **Unjustified repeated rejection:** when relevant constraints are unchanged,
+  reject a recommendation with the same normalized addition/cut identities as a
+  previous rejection unless its `necessity_justification` explains why it remains
+  necessary.
 - **Suggestion generation failure:** retain the original unresolved entry and let
   the player correct it manually. Do not block manual recovery.
 - **Scryfall failure after player approval:** keep the suggestion unverified and do
@@ -193,6 +214,11 @@ do not expose prompts, secrets, stack traces, or raw provider responses.
   context and a contract-valid response is presented as a review.
 - Given a response that cuts a protected card, deterministic validation rejects it
   and permits at most one automatic retry.
+- Given unchanged deck and player constraints, a previously rejected addition/cut
+  pair repeated without a necessity explanation is rejected; changed wording alone
+  does not make it new.
+- Given changed relevant constraints or an explicit structured necessity
+  explanation, a previously rejected recommendation may be considered again.
 - Given a complete deck recommendation without a cut, validation rejects the
   response even if its prose sounds reasonable.
 - Given a proposed addition that resolves and passes deterministic legality checks,
