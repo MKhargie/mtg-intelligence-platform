@@ -121,8 +121,10 @@ A successful response contains separate structured sections for:
 - theme and game-plan alignment;
 - mana, draw, interaction, and protection findings;
 - relevant gameplay risks;
-- an ordered set of three to five recommendations, unless the response states why
-  fewer responsible recommendations are possible;
+- an ordered set of three to five recommendations, unless the application's
+  deterministic recommendation gate permits fewer;
+- when fewer than three are permitted, a `reduced_count_reason_code` matching the
+  deterministic gate supplied by the application;
 - the diagnosed weakness addressed by each recommendation;
 - an explanation of how each recommendation respects the stated theme;
 - an optional `necessity_justification` field that is otherwise empty and is
@@ -146,6 +148,24 @@ recommendation in the current response to its gameplay addition identity and,
 when present, gameplay cut identity. Two recommendations with the same normalized
 addition/cut pair are duplicates. Any duplicate pair invalidates the response; it
 does not count again toward the three-to-five target.
+
+The application determines whether fewer than three recommendations are permitted
+before generation. It derives a `recommendation_limit` and reason code from
+deterministic legality findings, available open slots, and the quantities of
+eligible unprotected cut candidates. If that limit is at least three, the response
+must contain three to five recommendations. If it is below three, the response may
+contain no more than the limit and its `reduced_count_reason_code` must exactly
+match the supplied gate. An LLM-authored explanation alone cannot reduce the count.
+
+The application then validates the ordered recommendations as one cumulative
+change set. Starting from the resolved submitted deck, each recommendation is
+applied to a simulated deck in order. A cut must still exist in sufficient
+quantity, must remain eligible and unprotected, and consumes that quantity. A
+standalone addition consumes one available open slot. Each addition is checked
+against the simulated post-cut state for color identity, banned status, and
+copy-count rules. A plan that reuses an exhausted cut, exceeds its open slots, or
+creates an impermissible duplicate is rejected even when every individual pair
+would be valid in isolation.
 
 During refinement, the application also normalizes each recommendation to its
 resolved addition identity and, when present, resolved cut identity. It compares
@@ -244,6 +264,12 @@ original entry directly.
 - **Duplicate current recommendation:** reject a response containing the same
   normalized gameplay addition/cut pair more than once, before evaluating the
   recommendation count.
+- **Unsupported reduced count:** reject fewer than three recommendations unless the
+  deterministic `recommendation_limit` is below three and the response carries its
+  matching `reduced_count_reason_code`.
+- **Invalid cumulative plan:** reject an ordered set that reuses an exhausted cut,
+  consumes more open slots than exist, or becomes illegal when its changes are
+  applied sequentially to the simulated deck.
 - **Suggestion generation failure:** retain the original unresolved entry and let
   the player correct it manually. Do not block manual recovery.
 - **Scryfall failure after player approval:** keep the suggestion unverified and do
@@ -261,6 +287,13 @@ do not expose prompts, secrets, stack traces, or raw provider responses.
 - Given the same normalized addition/cut pair repeated in one response, validation
   rejects the response and the repeated pair does not satisfy the recommendation
   count.
+- Given a deterministic recommendation limit of at least three, a one-item response
+  is rejected regardless of the LLM's explanation.
+- Given a deterministic limit below three, a reduced response is accepted only up
+  to that limit and with the exact supplied reason code.
+- Given distinct recommendation pairs that reuse a cut beyond its available
+  quantity, exhaust open slots, or create an illegal cumulative copy count, ordered
+  simulation rejects the complete response.
 - Given unchanged deck and player constraints, a previously rejected addition/cut
   pair repeated without a necessity explanation is rejected; changed wording alone
   does not make it new.
