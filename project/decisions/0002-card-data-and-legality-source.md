@@ -140,11 +140,15 @@ The evaluator checks at least:
 - banned cards;
 - duplicate nonbasic cards;
 - basic-land and card-specific copy-count exceptions;
-- deck size for a submission designated as complete.
+- deck size above the permitted Commander total for every submission;
+- deck size below the permitted Commander total for a submission designated as
+  complete.
 
-An incomplete brew is not illegal solely because it contains fewer than 100 cards.
-Other material legality findings still apply. Findings correlate to submitted
-entries by stable identity and source line rather than response order alone.
+An incomplete brew is not illegal solely because it contains fewer than the
+permitted Commander total. An incomplete brew above that total still receives a
+deck-size finding. Other material legality findings still apply. Findings
+correlate to submitted entries by stable identity and source line rather than
+response order alone.
 
 If rules or card data required by any check is absent or internally inconsistent,
 evaluation fails explicitly. It does not report the deck as legal from partial
@@ -197,8 +201,9 @@ an incomplete deck model to reach legality or recommendation logic.
   evaluator returns a blocking finding correlated to the designation.
 - Given an off-color, banned, or impermissibly duplicated card, the evaluator
   returns a stable finding correlated to each affected entry.
-- Given a complete deck with an invalid size, size produces a finding; given an
-  explicitly incomplete brew below 100 cards, size alone does not.
+- Given a complete deck below or above the permitted total, size produces a
+  finding; given an explicitly incomplete brew below that total, size alone does
+  not; given an incomplete brew above that total, size produces a finding.
 - Given missing rules data required by any check, evaluation fails without
   declaring the deck legal or starting an LLM review.
 

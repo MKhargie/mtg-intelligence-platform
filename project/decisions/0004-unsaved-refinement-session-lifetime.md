@@ -83,15 +83,26 @@ later feature and require separate product and data-retention decisions.
 ## Session contract
 
 On successful completion of the initial review, the application returns an opaque
-session identifier and an expiration timestamp. The expiration timestamp is 24
-hours after the successful completion time.
+session identifier, the initial session version, and an expiration timestamp. The
+expiration timestamp is 24 hours after the successful completion time.
 
 Each successful qualifying refinement response returns the same logical session
-identifier and a new expiration timestamp 24 hours after that success. The latest
-successful response determines the current deadline.
+identifier, the newly committed session version, and a new expiration timestamp 24
+hours after that success. The latest successful response determines the current
+deadline.
+
+A successful resume or load returns the current session version with the current
+state and expiration timestamp so the next refinement can supply that version.
 
 Requests identify the session using the opaque identifier. Clients do not derive,
 modify, or depend on information encoded inside that identifier.
+
+Each successful session state has a monotonically increasing version. A refinement
+request includes the version it read. The application may process requests
+concurrently, but it commits a successful result only when that expected version
+still matches the current session version. A commit atomically updates the latest
+deck and refinement context, increments the version, and sets the new expiration
+timestamp.
 
 The active session retains only the context required for refinement, including the
 latest accepted deck list, player intent, protected cards, and relevant feedback or
@@ -115,9 +126,17 @@ retryable operational error because it does not disclose identifier history.
 
 A qualifying request accepted strictly before expiry may finish after the prior
 deadline. The session remains reserved while that request is in flight. Success
-sets a new deadline 24 hours after completion; failure leaves the prior deadline
-unchanged and therefore leaves the session expired. Cleanup must not remove an
-in-flight session before this result is committed.
+sets a new deadline 24 hours after completion only when its expected session
+version is still current. Failure leaves the prior deadline unchanged. Cleanup
+must not remove an in-flight session before its result can be checked.
+
+If another refinement commits first, the later completion of a request based on an
+older version is stale. The application discards that result without changing
+session state or expiration and returns a conflict that directs the client to load
+the current state before retrying. The conflict includes the current session
+version but does not treat the stale result as current state. A stale success or
+failure cannot overwrite newer deck context or shorten or extend the current
+deadline.
 
 Expiration makes the session unavailable to the player. Physical deletion may
 occur asynchronously, but expired data must not be usable for review or refinement.
@@ -138,7 +157,14 @@ separate data-retention decision before production use.
 - Given a qualifying request accepted before expiry that succeeds after the prior
   deadline, the session remains active and expires 24 hours after completion.
 - Given a qualifying request accepted before expiry that fails after the prior
-  deadline, the session is expired.
+  deadline with no newer committed version, the session is expired.
+- Given two requests based on the same session version, only the first successful
+  commit updates state and increments the version; the other completion is stale.
+- Given a failed request followed by a successful request based on the same still-
+  current version, the successful request may commit because failure did not
+  increment the version.
+- Given a stale completion after a newer refinement succeeds, the stale result does
+  not change deck context, session version, or expiration.
 - Given an expired session, possessing its identifier does not restore access and
   the player is directed to start a new review.
 - Given an expired, deleted, malformed, or unknown identifier, the player observes
