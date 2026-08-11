@@ -101,6 +101,8 @@ repeat the same invalid result without progress.
 The LLM review request contains only the context needed for the current review:
 
 - normalized, Scryfall-resolved deck entries and relevant card facts;
+- the explicit, legality-validated commander configuration and its resolved card
+  facts;
 - deterministic legality findings that materially affect the advice;
 - whether the deck is complete or an incomplete brew;
 - the player's stated theme or intended experience;
@@ -126,6 +128,8 @@ A successful response contains separate structured sections for:
 - an optional `necessity_justification` field that is otherwise empty and is
   required when repeating a previously rejected recommendation under unchanged
   relevant constraints;
+- a `fact_basis` for each recommended addition containing structured references to
+  the normalized card facts used by its player-facing explanation;
 - an addition and a specific non-protected cut for each complete-deck change;
 - for an incomplete brew, whether an addition uses an open slot or includes a
   specific non-protected cut.
@@ -162,6 +166,24 @@ checks for the current commander configuration, including color identity, banned
 status, and applicable copy-count rules. The application then validates the paired
 cut, protected-card constraints, open-slot rules, and the remaining response.
 
+After proposed additions resolve, the application performs a grounding pass that
+supplies their normalized gameplay facts, including Oracle text and face data, to
+the LLM. The final recommendation explanations are generated or revised from those
+facts. For each addition, the grounding response cites the supporting normalized
+fact keys and values in `fact_basis`. Deterministic validation requires every cited
+fact to match the resolved card identity and normalized value.
+
+Player-facing card-mechanics claims are rendered from the validated `fact_basis`;
+free-form LLM prose is not treated as an additional source of card facts. Missing,
+mismatched, or unsupported fact references invalidate the response.
+
+The grounding pass may not change addition or cut identities. An identity change
+invalidates the attempt, consumes the single automatic retry, and does not trigger
+resolution within that attempt. If the retry is available, the complete sequence
+restarts with proposal generation, then Scryfall resolution, then a new grounding
+pass. A second invalid attempt ends generation. Only the grounded, fully validated
+response may be shown to the player.
+
 If any addition is unknown, ambiguous, or illegal for the deck, the entire review
 response is contract-invalid. The application may use its single automatic retry
 with precise validation feedback. It does not show a partial review, silently
@@ -196,6 +218,10 @@ original entry directly.
   addition must resolve and pass deterministic legality checks before presentation;
   the LLM cannot introduce an unverified card into the deck or authoritative
   findings.
+- **Ungrounded or identity-changing recommendation:** reject a response with a
+  missing, mismatched, or unsupported `fact_basis`, or whose grounding pass changes
+  selected addition or cut identities. This consumes the attempt under the single-
+  retry limit.
 - **Unjustified repeated rejection:** when relevant constraints are unchanged,
   reject a recommendation with the same normalized addition/cut identities as a
   previous rejection unless its `necessity_justification` explains why it remains
@@ -222,7 +248,16 @@ do not expose prompts, secrets, stack traces, or raw provider responses.
 - Given a complete deck recommendation without a cut, validation rejects the
   response even if its prose sounds reasonable.
 - Given a proposed addition that resolves and passes deterministic legality checks,
-  the application may present it after the complete response passes validation.
+  its normalized gameplay facts return to the LLM for the grounding pass; the
+  application may present it only after the grounded response passes validation.
+- Given a `fact_basis` reference that does not exactly match the resolved card's
+  normalized fact, deterministic validation rejects the response.
+- Given a grounding pass that changes an addition or cut identity, the response is
+  invalid, consumes the attempt, and the changed identity is not resolved within
+  that attempt; an available retry restarts the complete sequence.
+- Given a deck containing multiple commander-eligible cards, the LLM receives the
+  player's explicit legality-validated commander configuration rather than
+  inferring commanders from the deck entries.
 - Given any proposed addition that is unknown, ambiguous, off-color, banned, or
   otherwise invalid, the entire response is discarded and receives at most the
   existing single automatic retry.
