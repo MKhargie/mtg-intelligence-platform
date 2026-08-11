@@ -97,6 +97,18 @@ state and expiration timestamp so the next refinement can supply that version.
 Requests identify the session using the opaque identifier. Clients do not derive,
 modify, or depend on information encoded inside that identifier.
 
+Because this identifier grants bearer access to unsaved deck and preference state,
+it is generated with a cryptographically secure random source and contains at least
+128 bits of entropy. It is not sequential, guessable, or derived from player input,
+timestamps, database keys, or session contents. The token encodes no sensitive
+data. External client transport carrying the token uses HTTPS with TLS; production
+requests do not transmit it over plaintext HTTP.
+
+The full bearer token is not written to application logs, analytics, traces,
+internal exception or error reports, or player-facing error messages. Operational
+diagnostics may use a non-reversible, truncated correlation value that cannot
+authenticate a request.
+
 Each successful session state has a monotonically increasing version. A refinement
 request includes the version it read. The application may process requests
 concurrently, but it commits a successful result only when that expected version
@@ -169,6 +181,14 @@ separate data-retention decision before production use.
   the player is directed to start a new review.
 - Given an expired, deleted, malformed, or unknown identifier, the player observes
   the same `session unavailable` outcome.
+- Given many created sessions, identifiers are produced by a cryptographically
+  secure generator with at least 128 bits of entropy and reveal no sequence,
+  timestamp, player input, or stored session data.
+- Given request logging and error reporting, the complete bearer identifier does
+  not appear in logs, analytics, traces, internal exception or error reports, or
+  player-facing messages.
+- Given a production client request carrying a session identifier, plaintext HTTP
+  is not accepted and the identifier is transmitted only through HTTPS with TLS.
 - Given a temporary storage-service failure, the player receives a retryable
   service error rather than a claim about the identifier.
 - Given lost browser state or use of another device, the product does not promise
