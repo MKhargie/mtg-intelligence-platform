@@ -128,8 +128,9 @@ A successful response contains separate structured sections for:
 - an optional `necessity_justification` field that is otherwise empty and is
   required when repeating a previously rejected recommendation under unchanged
   relevant constraints;
-- a `fact_basis` for each recommended addition containing structured references to
-  the normalized card facts used by its player-facing explanation;
+- a `fact_basis` for every player-facing card-mechanics claim, whether it concerns
+  a submitted card or recommended addition, containing structured references to
+  the normalized card facts used by that claim;
 - an addition and a specific non-protected cut for each complete-deck change;
 - for an incomplete brew, whether an addition uses an open slot or includes a
   specific non-protected cut.
@@ -177,6 +178,11 @@ Player-facing card-mechanics claims are rendered from the validated `fact_basis`
 free-form LLM prose is not treated as an additional source of card facts. Missing,
 mismatched, or unsupported fact references invalidate the response.
 
+The same rule applies to diagnosis and explanation claims about cards already in
+the submitted deck. Their `fact_basis` references the normalized gameplay identity
+and exact fact keys and values supplied in the original review request. Proposed
+additions reference the normalized facts returned after their resolution.
+
 The grounding pass may not change addition or cut identities. An identity change
 invalidates the attempt, consumes the single automatic retry, and does not trigger
 resolution within that attempt. If the retry is available, the complete sequence
@@ -222,6 +228,9 @@ original entry directly.
   missing, mismatched, or unsupported `fact_basis`, or whose grounding pass changes
   selected addition or cut identities. This consumes the attempt under the single-
   retry limit.
+- **Ungrounded submitted-card claim:** reject a diagnosis or explanation containing
+  a card-mechanics claim without a `fact_basis` that exactly matches the submitted
+  card's normalized gameplay facts.
 - **Unjustified repeated rejection:** when relevant constraints are unchanged,
   reject a recommendation with the same normalized addition/cut identities as a
   previous rejection unless its `necessity_justification` explains why it remains
@@ -252,6 +261,9 @@ do not expose prompts, secrets, stack traces, or raw provider responses.
   application may present it only after the grounded response passes validation.
 - Given a `fact_basis` reference that does not exactly match the resolved card's
   normalized fact, deterministic validation rejects the response.
+- Given a diagnosis that attributes a mechanic to a submitted card, its
+  `fact_basis` must exactly match that card's normalized gameplay identity and fact
+  value or deterministic validation rejects the response.
 - Given a grounding pass that changes an addition or cut identity, the response is
   invalid, consumes the attempt, and the changed identity is not resolved within
   that attempt; an available retry restarts the complete sequence.

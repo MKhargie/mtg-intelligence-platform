@@ -99,7 +99,8 @@ For every successfully resolved reference, the interface returns normalized data
 containing at least:
 
 - source line number and submitted values for traceability;
-- a stable card identifier;
+- a stable gameplay identity shared by all printings of the same Oracle card;
+- a separate printing identity when a specific printing resolves;
 - canonical card name;
 - card layout and card faces when applicable;
 - type line;
@@ -115,6 +116,11 @@ containing at least:
 The response preserves the association between each submitted entry and its
 resolution result. Response order must not be the only means of establishing that
 association.
+
+Rules, singleton checks, incomplete-brew distinct-identity counts, protected-card
+normalization, and rejected-recommendation comparisons use gameplay identity.
+Printing identity preserves the player's requested set/collector selection but
+does not make two printings of the same Oracle card distinct for those behaviors.
 
 The exact normalized application types will be defined during implementation,
 but they must satisfy this behavioral contract without exposing raw provider
@@ -186,6 +192,9 @@ an incomplete deck model to reach legality or recommendation logic.
   and returns one correlated normalized result per reference.
 - Given an accented or double-faced card name, the normalized result preserves and
   resolves the intended identity.
+- Given two entries for different printings of the same Oracle card, they have the
+  same gameplay identity and different printing identities; singleton, protected-
+  card, minimum-brew, and rejected-recommendation logic treat them as one card.
 - Given a successfully resolved card, the normalized result contains the gameplay
   facts needed for theme, game-plan, mana, draw, interaction, and protection
   analysis without requiring the LLM to invent card text.
