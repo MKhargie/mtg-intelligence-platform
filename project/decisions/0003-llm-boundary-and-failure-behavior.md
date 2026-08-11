@@ -151,11 +151,46 @@ does not count again toward the three-to-five target.
 
 The application determines whether fewer than three recommendations are permitted
 before generation. It derives a `recommendation_limit` and reason code from
-deterministic legality findings, available open slots, and the quantities of
-eligible unprotected cut candidates. If that limit is at least three, the response
-must contain three to five recommendations. If it is below three, the response may
-contain no more than the limit and its `reduced_count_reason_code` must exactly
-match the supplied gate. An LLM-authored explanation alone cannot reduce the count.
+the context-readiness result, deterministic legality findings, available open
+slots, and the quantities of eligible unprotected cut candidates.
+
+Before recommendation generation, a context-readiness preflight evaluates only the
+player's stated theme or intended experience, the designated commanders, the
+resolved submitted cards, and the protected-card set. Its structured result is
+either `sufficient` or `clarification_required`. A clarification result contains
+one or more of these closed reason codes and at least one specific player question
+for each code:
+
+- `missing_intent`: no theme or intended experience was supplied;
+- `broad_intent`: the supplied intent does not distinguish a game plan or desired
+  experience enough to choose among materially different recommendations;
+- `ambiguous_intent`: two or more reasonable interpretations of the supplied
+  intent would produce materially different recommendations;
+- `conflicting_constraints`: the supplied intent conflicts with the commander
+  configuration, submitted deck, or protected cards, including when satisfying the
+  intent would require changing a protected card.
+
+Missing intent is detected by deterministic application validation. The other
+three qualitative classifications may be produced by a preflight model, but the
+application accepts them only in the structured form above and validates that all
+codes are from the closed set and all required questions are present. A
+`clarification_required` result prevents recommendation generation, sets
+`recommendation_limit` to zero, and returns only those reasons and questions.
+
+When context is sufficient and the limit is at least three, the response must
+contain three to five recommendations. When the deterministic limit is one or two,
+the response must contain exactly that many and its `reduced_count_reason_code`
+must exactly match the supplied gate. An LLM-authored explanation alone cannot
+reduce the count.
+
+Sufficient context can still produce a deterministic limit of zero. The gate uses
+`legality_blocks_recommendations` when unresolved legality findings prevent safe
+changes, or `no_available_changes` when there are neither open slots nor eligible
+unprotected cut quantities. Recommendation generation is skipped. The application
+returns a diagnosis-only result derived from the resolved deck and deterministic
+findings, with zero recommendations and the matching reason code. This is distinct
+from a clarification result because it asks no context question and does not imply
+that more player intent alone would permit a change.
 
 The application then validates the ordered recommendations as one cumulative
 change set. Starting from the resolved submitted deck, each recommendation is
@@ -266,8 +301,15 @@ original entry directly.
   normalized gameplay addition/cut pair more than once, before evaluating the
   recommendation count.
 - **Unsupported reduced count:** reject fewer than three recommendations unless the
-  deterministic `recommendation_limit` is below three and the response carries its
-  matching `reduced_count_reason_code`.
+  deterministic `recommendation_limit` is one or two, the response count exactly
+  matches that limit, and it carries the matching `reduced_count_reason_code`.
+- **Insufficient player context:** return the stable clarification reasons and
+  questions with no recommendations. Do not begin recommendation generation until
+  the player supplies context that validates as sufficient.
+- **No responsible changes available:** for sufficient context and a deterministic
+  limit of zero, skip recommendation generation and return a diagnosis-only result
+  with `legality_blocks_recommendations` or `no_available_changes`, as determined
+  by the gate.
 - **Invalid cumulative plan:** reject an ordered set that reuses an exhausted cut,
   consumes more open slots than exist, or becomes illegal when its changes are
   applied sequentially to the simulated deck.
@@ -290,8 +332,18 @@ do not expose prompts, secrets, stack traces, or raw provider responses.
   count.
 - Given a deterministic recommendation limit of at least three, a one-item response
   is rejected regardless of the LLM's explanation.
-- Given a deterministic limit below three, a reduced response is accepted only up
-  to that limit and with the exact supplied reason code.
+- Given a deterministic limit of one or two, a reduced response is accepted only
+  when its count exactly equals that limit and its reason code matches.
+- Given missing intent, intent broad enough to support materially different game
+  plans, intent with two materially different reasonable interpretations, or intent
+  that would require changing a protected card, preflight returns respectively
+  `missing_intent`, `broad_intent`, `ambiguous_intent`, or
+  `conflicting_constraints`, includes a specific question for every reason, sets
+  the limit to zero, and no recommendation generation begins.
+- Given sufficient context but unresolved legality findings, or no open slots and
+  no eligible unprotected cuts, the gate returns a zero limit with respectively
+  `legality_blocks_recommendations` or `no_available_changes`; recommendation
+  generation is skipped and a diagnosis-only result is returned.
 - Given distinct recommendation pairs that reuse a cut beyond its available
   quantity, exhaust open slots, or create an illegal cumulative copy count, ordered
   simulation rejects the complete response.
