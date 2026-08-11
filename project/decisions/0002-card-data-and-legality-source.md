@@ -143,6 +143,7 @@ The evaluator checks at least:
 - whether a multi-card commander configuration is permitted together;
 - the commanders' combined color identity;
 - cards outside that color identity;
+- every submitted card's normalized Commander legality status is legal;
 - banned cards;
 - duplicate nonbasic cards;
 - basic-land and card-specific copy-count exceptions;
@@ -171,8 +172,10 @@ The interface distinguishes at least these outcomes:
   source line and submitted values so the player can correct them.
 - **Ambiguous card:** the submitted identity cannot select one card safely. Report
   the source line and request clarification; do not choose silently.
-- **Invalid printing metadata:** the name may exist, but the supplied set and
-  collector number do not resolve together. Report the conflicting values.
+- **Invalid printing metadata:** the supplied set and collector number do not
+  resolve together, or their resolved gameplay identity differs from the identity
+  resolved from the submitted name. Report the conflicting values; do not replace
+  the submitted card silently.
 - **Rate limited:** report temporary provider unavailability and preserve enough
   information for a controlled retry. Do not retry without a defined limit.
 - **Timeout or network failure:** report temporary card-data unavailability. Do
@@ -202,6 +205,9 @@ an incomplete deck model to reach legality or recommendation logic.
   source line and no review begins.
 - Given mismatched set and collector metadata, the response reports an invalid
   printing instead of silently resolving by name alone.
+- Given a valid submitted name paired with set/collector metadata for a different
+  card, name and printing resolution do not converge on one gameplay identity, so
+  the response reports invalid printing metadata without replacing the card.
 - Given a provider timeout, rate limit, or unavailable service, no card facts are
   requested from or supplied by the language model.
 - Given a valid provider response, downstream legality and review code can operate
@@ -210,6 +216,8 @@ an incomplete deck model to reach legality or recommendation logic.
   evaluator returns a blocking finding correlated to the designation.
 - Given an off-color, banned, or impermissibly duplicated card, the evaluator
   returns a stable finding correlated to each affected entry.
+- Given a submitted card whose normalized Commander legality status is not legal,
+  the evaluator returns a blocking finding even when its status is not `banned`.
 - Given a complete deck below or above the permitted total, size produces a
   finding; given an explicitly incomplete brew below that total, size alone does
   not; given an incomplete brew above that total, size produces a finding.

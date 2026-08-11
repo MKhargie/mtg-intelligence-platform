@@ -190,8 +190,9 @@ added to deck state immediately.
 Before presentation, the application sends every proposed addition through the
 card-data boundary. Each must resolve through Scryfall and pass deterministic
 checks for the current commander configuration, including color identity, banned
-status, and applicable copy-count rules. The application then validates the paired
-cut, protected-card constraints, open-slot rules, and the remaining response.
+status, normalized Commander legality status, and applicable copy-count rules. The
+application then validates the paired cut, protected-card constraints, open-slot
+rules, and the remaining response.
 
 After proposed additions resolve, the application performs a grounding pass that
 supplies their normalized gameplay facts, including Oracle text and face data, to
@@ -316,8 +317,9 @@ do not expose prompts, secrets, stack traces, or raw provider responses.
   player's explicit legality-validated commander configuration rather than
   inferring commanders from the deck entries.
 - Given any proposed addition that is unknown, ambiguous, off-color, banned, or
-  otherwise invalid, the entire response is discarded and receives at most the
-  existing single automatic retry.
+  whose normalized Commander status is not legal, or that is otherwise invalid,
+  the entire response is discarded and receives at most the existing single
+  automatic retry.
 - Given an unknown submitted name, the LLM may return candidate names, but none is
   added to the deck before explicit player selection and successful Scryfall
   resolution.
