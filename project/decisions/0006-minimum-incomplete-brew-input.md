@@ -22,13 +22,15 @@ An incomplete brew is eligible for review only when all of the following are
 provided and validated:
 
 - the player explicitly identifies the submission as an incomplete brew;
-- one eligible commander resolves successfully;
+- one or more designated commanders resolve successfully and form a legal
+  Commander configuration;
 - the player states a theme, intended experience, or both;
 - at least 10 distinct noncommander card identities resolve successfully.
 
 The minimum counts distinct resolved card identities, not quantities or repeated
 text entries. Ten copies of one identity therefore count as one identity for this
-threshold. The commander's identity does not count toward the 10-card minimum.
+threshold. Designated commander identities do not count toward the 10-card
+minimum.
 
 Protected cards are optional. Any supplied protected card must satisfy the
 protected-card contract and occur in the submitted brew.
@@ -41,7 +43,8 @@ composition.
 
 ## Rationale
 
-- An eligible commander establishes color identity and a primary strategic anchor.
+- A legal designated commander configuration establishes color identity and a
+  primary strategic anchor.
 - Stated intent is necessary because the same commander may support several
   different themes and experiences.
 - Ten distinct noncommander identities provide evidence of the player's actual
@@ -88,15 +91,16 @@ An incomplete-brew review request contains:
 
 - an explicit incomplete-brew designation;
 - a deck list satisfying Decision 0001;
-- exactly one submitted commander designation;
+- one or more submitted commander designations;
 - a nonblank statement of theme or intended experience;
 - an optional protected-card collection;
 - optional additional player context.
 
 All submitted card entries pass through the card-data boundary before eligibility
-is evaluated. The commander must resolve as eligible for the role under the
-authoritative card and legality data. The remaining entries must contain at least
-10 distinct resolved noncommander identities.
+is evaluated. Every designated commander must resolve as eligible for the role,
+and multiple commanders must form a permitted configuration under authoritative
+card and legality data. The remaining entries must contain at least 10 distinct
+resolved identities excluding all designated commanders.
 
 The deck may contain quantities and may be far below 100 cards. Being incomplete
 is not itself a legality failure. Other material legality problems are still
@@ -121,10 +125,11 @@ For an eligible incomplete brew:
 
 - **Incomplete designation missing:** do not infer it solely from deck size. Ask
   whether the player intended an incomplete brew or submitted a truncated deck.
-- **Commander missing or multiple commanders submitted:** request a valid commander
-  designation, subject to supported Commander rules.
-- **Commander ineligible or unresolved:** report the authoritative resolution or
-  legality problem; do not ask the LLM to choose a commander.
+- **Commander designation missing:** request at least one designation before
+  review.
+- **Commander configuration ineligible, incompatible, or unresolved:** report the
+  authoritative resolution or legality problem; do not ask the LLM to choose or
+  repair the configuration.
 - **Intent missing or blank:** ask for a theme or intended experience before review.
 - **Fewer than 10 distinct resolved noncommander identities:** report the current
   count, the required count, and how many more distinct cards are needed.
@@ -139,8 +144,11 @@ satisfied.
 
 ## Verification examples
 
-- Given an eligible commander, stated intent, explicit incomplete status, and 10
-  distinct resolved noncommander identities, the brew is eligible for review.
+- Given a legal designated commander configuration, stated intent, explicit
+  incomplete status, and 10 distinct resolved noncommander identities, the brew is
+  eligible for review.
+- Given multiple designated commanders that are not permitted together, the brew
+  is not eligible until the configuration is corrected.
 - Given the same request with nine distinct noncommander identities, the response
   says that one more distinct card is required and no review begins.
 - Given 10 submitted copies of one noncommander identity, the threshold count is

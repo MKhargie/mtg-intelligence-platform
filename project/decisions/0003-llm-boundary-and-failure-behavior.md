@@ -129,8 +129,27 @@ A successful response contains separate structured sections for:
 
 Application code validates the response before presentation. At minimum it checks
 the response shape, protected-card constraint, recommendation count, required cuts,
-and references to known resolved cards. A response that fails validation is not a
-completed review.
+and references to resolved submitted cards where the response discusses the
+existing deck. Proposed additions follow the verification contract below. A
+response that fails validation is not a completed review.
+
+## Proposed-addition verification contract
+
+The LLM may propose card names that are not in the submitted deck. Those names are
+unverified suggestions when generated and are not shown as a completed review or
+added to deck state immediately.
+
+Before presentation, the application sends every proposed addition through the
+card-data boundary. Each must resolve through Scryfall and pass deterministic
+checks for the current commander configuration, including color identity, banned
+status, and applicable copy-count rules. The application then validates the paired
+cut, protected-card constraints, open-slot rules, and the remaining response.
+
+If any addition is unknown, ambiguous, or illegal for the deck, the entire review
+response is contract-invalid. The application may use its single automatic retry
+with precise validation feedback. It does not show a partial review, silently
+replace the card, or ask the player to approve an invalid addition. A second
+invalid response ends generation under the existing failure contract.
 
 ## Card-name suggestion contract
 
@@ -156,8 +175,10 @@ original entry directly.
   one automatic retry with validation feedback that contains no secrets.
 - **Second invalid result:** stop and report that a valid review could not be
   generated. Do not weaken validation to accept it.
-- **Invented or unresolved card reference:** reject the affected response. The LLM
-  cannot introduce an unverified card into the deck or authoritative findings.
+- **Invented or unresolved card reference:** reject the entire response. A proposed
+  addition must resolve and pass deterministic legality checks before presentation;
+  the LLM cannot introduce an unverified card into the deck or authoritative
+  findings.
 - **Suggestion generation failure:** retain the original unresolved entry and let
   the player correct it manually. Do not block manual recovery.
 - **Scryfall failure after player approval:** keep the suggestion unverified and do
@@ -174,6 +195,11 @@ do not expose prompts, secrets, stack traces, or raw provider responses.
   and permits at most one automatic retry.
 - Given a complete deck recommendation without a cut, validation rejects the
   response even if its prose sounds reasonable.
+- Given a proposed addition that resolves and passes deterministic legality checks,
+  the application may present it after the complete response passes validation.
+- Given any proposed addition that is unknown, ambiguous, off-color, banned, or
+  otherwise invalid, the entire response is discarded and receives at most the
+  existing single automatic retry.
 - Given an unknown submitted name, the LLM may return candidate names, but none is
   added to the deck before explicit player selection and successful Scryfall
   resolution.

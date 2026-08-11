@@ -100,6 +100,22 @@ For each accepted line, parsing produces:
 Card lookup and Commander-legality validation occur after parsing and are outside
 this decision's parsing contract.
 
+## Commander designation contract
+
+Every complete-deck or incomplete-brew review request explicitly designates one or
+more parsed entries as its commander configuration. Archidekt category metadata,
+including `[Commander{top}]`, may prefill that selection in the user interface but
+does not become authoritative until represented in the normalized request.
+
+Each designated commander must occur in the submitted deck. One designated card is
+the common case; multiple designations continue to legality evaluation, which
+determines whether their specific combination is permitted. All valid designated
+commanders are inherently protected and excluded from cut candidates.
+
+If no commander is designated, the request asks the player to select one before
+review. If explicit designations conflict with Archidekt category metadata, the
+request asks the player to clarify rather than silently preferring either source.
+
 ## Failure contract
 
 The whole request is not silently corrected when a nonblank line cannot be parsed.
@@ -115,6 +131,9 @@ A line fails parsing when:
   collector number;
 - delimiters are unbalanced or metadata appears outside the supported order;
 - text outside the supported Archidekt-style entry makes the card name ambiguous.
+
+A missing or conflicting commander designation is a review-request validation
+failure rather than a deck-list parsing failure.
 
 A syntactically valid but unknown or ambiguous card name passes parsing and then
 fails card lookup. That later failure must identify the line and ask the player to
@@ -149,3 +168,7 @@ The following is syntactically valid but requires a later card-lookup result:
 ```text
 1x A Card Name That May Not Exist
 ```
+
+Given a list containing `[Commander{top}]`, the interface may preselect that entry
+as commander. Given a conflicting explicit selection, it asks the player to
+clarify before review.

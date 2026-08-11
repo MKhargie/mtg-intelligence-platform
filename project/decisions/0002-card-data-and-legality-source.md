@@ -116,6 +116,36 @@ The exact normalized application types will be defined during implementation,
 but they must satisfy this behavioral contract without exposing raw provider
 objects to review logic.
 
+## Legality-evaluation contract
+
+After every entry and commander designation resolves, an application-owned
+legality evaluator receives the normalized deck entries and quantities, the
+explicit commander configuration, the complete-deck or incomplete-brew
+designation, and the resolved facts required by the checks below.
+
+The evaluator returns structured findings. Each finding contains a stable finding
+code, affected submitted lines or card identities when applicable, a player-facing
+explanation, and a severity stating whether it blocks review or is informational.
+
+The evaluator checks at least:
+
+- eligibility of every designated commander;
+- whether a multi-card commander configuration is permitted together;
+- the commanders' combined color identity;
+- cards outside that color identity;
+- banned cards;
+- duplicate nonbasic cards;
+- basic-land and card-specific copy-count exceptions;
+- deck size for a submission designated as complete.
+
+An incomplete brew is not illegal solely because it contains fewer than 100 cards.
+Other material legality findings still apply. Findings correlate to submitted
+entries by stable identity and source line rather than response order alone.
+
+If rules or card data required by any check is absent or internally inconsistent,
+evaluation fails explicitly. It does not report the deck as legal from partial
+data and no LLM review begins.
+
 ## Failure contract
 
 Card-data failures are reported separately from parsing failures. The system must
@@ -156,6 +186,14 @@ an incomplete deck model to reach legality or recommendation logic.
   requested from or supplied by the language model.
 - Given a valid provider response, downstream legality and review code can operate
   on normalized application data without importing Scryfall response types.
+- Given an ineligible commander or invalid multi-commander combination, the
+  evaluator returns a blocking finding correlated to the designation.
+- Given an off-color, banned, or impermissibly duplicated card, the evaluator
+  returns a stable finding correlated to each affected entry.
+- Given a complete deck with an invalid size, size produces a finding; given an
+  explicitly incomplete brew below 100 cards, size alone does not.
+- Given missing rules data required by any check, evaluation fails without
+  declaring the deck legal or starting an LLM review.
 
 ## Operational reference
 

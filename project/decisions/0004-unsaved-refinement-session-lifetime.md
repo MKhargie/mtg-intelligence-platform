@@ -103,15 +103,15 @@ earlier review versions.
 The session is active strictly before its expiration timestamp. At or after that
 timestamp it is expired and cannot accept further refinement.
 
-An expired-session response:
+Active identifiers resume normally. Expired, physically deleted, malformed, and
+unknown identifiers all return the same player-facing `session unavailable`
+outcome. That response tells the player to start a new review and resubmit the
+latest deck and preferences. It does not reconstruct context from an LLM, logs, or
+partial provider data and does not reveal whether the identifier ever existed.
 
-- clearly distinguishes expiration from an unknown identifier and from temporary
-  service failure when appropriate for the caller;
-- tells the player that a new review must be started;
-- asks the player to resubmit the latest deck and preferences;
-- does not reconstruct context from an LLM, logs, or partial provider data;
-- does not reveal internal storage details or whether deleted session data once
-  existed.
+The application may distinguish these causes internally for diagnostics while the
+information exists. A temporary session-storage service failure remains a separate
+retryable operational error because it does not disclose identifier history.
 
 A qualifying request accepted strictly before expiry may finish after the prior
 deadline. The session remains reserved while that request is in flight. Success
@@ -141,5 +141,9 @@ separate data-retention decision before production use.
   deadline, the session is expired.
 - Given an expired session, possessing its identifier does not restore access and
   the player is directed to start a new review.
+- Given an expired, deleted, malformed, or unknown identifier, the player observes
+  the same `session unavailable` outcome.
+- Given a temporary storage-service failure, the player receives a retryable
+  service error rather than a claim about the identifier.
 - Given lost browser state or use of another device, the product does not promise
   recovery of the unsaved session.
