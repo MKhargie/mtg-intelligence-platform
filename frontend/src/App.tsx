@@ -6,7 +6,7 @@ function App() {
         <p>Frontend foundation is running.</p>
       </div>
     </section>
-  )
+  );
 }
 
-export default App
+export default App;
