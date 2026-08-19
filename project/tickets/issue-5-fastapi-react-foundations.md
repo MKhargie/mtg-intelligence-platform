@@ -2,7 +2,7 @@
 
 ## Status
 
-Ready for developer implementation, one microticket at a time.
+Implementation complete; ready for pull-request review.
 
 ## Source and scope
 
