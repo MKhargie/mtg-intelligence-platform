@@ -1,13 +1,12 @@
 [CmdletBinding()]
 param(
     [ValidateRange(1, 65535)]
-    [int]$BackendPort = 8000,
-
-    [ValidateRange(1, 65535)]
     [int]$FrontendPort = 5173,
 
     [ValidateRange(1, 120)]
-    [int]$TimeoutSeconds = 20
+    [int]$TimeoutSeconds = 20,
+
+    [switch]$SimulateProxyFailure
 )
 
 Set-StrictMode -Version Latest
@@ -17,6 +16,7 @@ Add-Type -AssemblyName System.Net.Http
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $backendDirectory = Join-Path $repositoryRoot "backend"
 $frontendDirectory = Join-Path $repositoryRoot "frontend"
+$backendPort = if ($SimulateProxyFailure) { 8001 } else { 8000 }
 $pythonPath = Join-Path $backendDirectory ".venv\Scripts\python.exe"
 $npmPath = (Get-Command npm.cmd -ErrorAction Stop).Source
 $runId = [Guid]::NewGuid().ToString("N")
@@ -158,20 +158,24 @@ try {
         throw "Backend Python environment was not found at $pythonPath. Complete backend setup first."
     }
 
-    Assert-PortAvailable -Port $BackendPort -ApplicationName "FastAPI"
+    Assert-PortAvailable -Port $backendPort -ApplicationName "FastAPI"
     Assert-PortAvailable -Port $FrontendPort -ApplicationName "Vite"
 
-    Write-Host "Starting FastAPI on port $BackendPort..."
+    if ($SimulateProxyFailure) {
+        Write-Host "Simulating a proxy failure by starting FastAPI away from Vite's configured port."
+    }
+
+    Write-Host "Starting FastAPI on port $backendPort..."
     $backendProcess = Start-Process `
         -FilePath $pythonPath `
-        -ArgumentList @("-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", $BackendPort) `
+        -ArgumentList @("-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", $backendPort) `
         -WorkingDirectory $backendDirectory `
         -WindowStyle Hidden `
         -RedirectStandardOutput $backendOutputLog `
         -RedirectStandardError $backendErrorLog `
         -PassThru
 
-    $backendHealthUri = "http://127.0.0.1:$BackendPort/health"
+    $backendHealthUri = "http://127.0.0.1:$backendPort/health"
     $backendHealthBody = Wait-ForEndpoint `
         -ApplicationName "FastAPI" `
         -Uri $backendHealthUri `
